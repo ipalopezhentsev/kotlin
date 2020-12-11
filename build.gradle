@@ -1,0 +1,24 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.4.10'
+}
+
+group 'ru.iliks'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    implementation("org.apache.logging.log4j:log4j-api:2.7")
+    implementation("org.apache.logging.log4j:log4j-core:2.7")
+    implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.7")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.0")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.7.0")
+    testCompile 'com.willowtreeapps.assertk:assertk-jvm:0.23'
+}
+
+test {
+    useJUnitPlatform()
+}
