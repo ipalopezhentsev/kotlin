@@ -3,9 +3,8 @@ package ru.iliks.coroutines
 import kotlinx.coroutines.*
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
-import java.time.Duration
-import java.time.Instant
-import kotlin.system.measureTimeMillis
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 
@@ -17,7 +16,7 @@ class TestCoroutines {
 
     @Test
     fun test() = runBlocking {
-        GlobalScope.launch {
+        launch {
             delay(2000)
             log.info("World")
         }
@@ -60,5 +59,21 @@ class TestCoroutines {
         //sequential style with async {} (analog of await from C#)
         //and now a & b are computed in parallel
         log.info("Duration={}", time)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `test explicit coroutine`() = runBlocking {
+        val exSvc = Executors.newSingleThreadScheduledExecutor()
+        try {
+            val res = suspendCancellableCoroutine { continuation ->
+                exSvc.schedule({ continuation.resume(" World", null) },
+                        2, TimeUnit.SECONDS)
+            }
+            log.info("Hello")
+            log.info(res)
+        } finally {
+            exSvc.shutdown()
+        }
     }
 }
