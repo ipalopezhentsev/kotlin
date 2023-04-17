@@ -202,7 +202,7 @@ class TestExceptions {
         runBlocking {
             //suppose we still want to call unreliableFunc async and get sum of all good invocations and ignoring bad ones.
             val job = SupervisorJob(coroutineContext.job)
-            val nonFailingScope = CoroutineScope(job)
+            val nonFailingScope = CoroutineScope(coroutineContext + job)
             //it's not enough to make this async on nonFailingScope, we need nested ones too or only them.
             val defSum = async {
                 val asyncs = mutableListOf<Deferred<Int>>()
