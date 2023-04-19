@@ -140,10 +140,12 @@ class TestExceptions {
     }
 
     private suspend fun unreliableFunc(i: Int): Int {
+        println("starting unreliableFunc for i=$i")
         delay(i.toLong())
         if (i == 5) {
             error("qqq")
         }
+        println("finished unreliableFunc for i=$i")
         return i
     }
 
@@ -198,7 +200,7 @@ class TestExceptions {
     }
 
     @Test
-    fun `proper fix for async optimizazion`() {
+    fun `proper fix for async optimization`() {
         runBlocking {
             //suppose we still want to call unreliableFunc async and get sum of all good invocations and ignoring bad ones.
             val job = SupervisorJob(coroutineContext.job)
@@ -233,7 +235,7 @@ class TestExceptions {
     }
 
     @Test
-    fun `a bit shorter proper fix for async optimizazion`() {
+    fun `a bit shorter proper fix for async optimization`() {
         runBlocking {
             //suppose we still want to call unreliableFunc async and get sum of all good invocations and ignoring bad ones.
             //it's not enough to make this async on nonFailingScope, we need nested ones too or only them.
@@ -263,4 +265,41 @@ class TestExceptions {
             assertThat(defSum.await()).isEqualTo(1 + 2 + 3 + 4 + 6 + 7 + 8 + 9 + 10)
         }
     }
+
+    @Test
+    fun `and coroutineScope actually allows to use more familiar try-catch logic - BUT removes parallelism`() =
+        runBlocking {
+            //let's add nested scopes, so that inner exception passes through them, now we won't have an answer.
+            val defSum = async {
+                val asyncs = mutableListOf<Deferred<Int>>()
+                for (i in 1..10) {
+                    try {
+                        //ok, this coroutineScope won't kill the parent job on exception (but will still throw
+                        //the exception, which can be caught) and we'll have correct result.
+                        //But also remember coroutineScope doesn't finish until all its
+                        //children finish, so there'll be no parallelism of calling unreliableFunc's.
+                        //so async() is effectively useless.
+                        coroutineScope {
+                            asyncs.add(
+                                async {
+                                    unreliableFunc(i)
+                                })
+                        }
+                    } catch (ex: Exception) {
+                        println("Exception happened for i=$i, but ignoring it and continuing")
+                    }
+                }
+                var sum = 0
+                asyncs.forEachIndexed { idx, async ->
+                    try {
+                        val i = async.await()
+                        sum += i
+                    } catch (ex: Exception) {
+                        println("Exception happened for i=${idx + 1}, but ignoring it and continuing: $ex")
+                    }
+                }
+                sum
+            }
+            assertThat(defSum.await()).isEqualTo(1 + 2 + 3 + 4 + 6 + 7 + 8 + 9 + 10)
+        }
 }
