@@ -276,6 +276,10 @@ class TestExceptions {
                     try {
                         //ok, this coroutineScope won't kill the parent job on exception (but will still throw
                         //the exception, which can be caught) and we'll have correct result.
+                        //(https://www.lukaslechner.com/why-exception-handling-with-kotlin-coroutines-is-so-hard-and-how-to-successfully-master-it/ :
+                        //"So the scoping function coroutineScope{} re-throws exceptions of its failing children
+                        //instead of propagating them up the job hierarchy.")
+
                         //But also remember coroutineScope doesn't finish until all its
                         //children finish, so there'll be no parallelism of calling unreliableFunc's.
                         //so async() is effectively useless.
