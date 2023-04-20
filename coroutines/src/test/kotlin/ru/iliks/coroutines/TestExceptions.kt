@@ -241,6 +241,8 @@ class TestExceptions {
             //it's not enough to make this async on nonFailingScope, we need nested ones too or only them.
             val defSum = async {
                 val asyncs = mutableListOf<Deferred<Int>>()
+                //remember that supervisorScope BOTH doesn't throw exceptions after its child jobs throw
+                //AND doesn't kill parent job
                 supervisorScope {
                     for (i in 1..10) {
                         val def = async {
@@ -306,4 +308,37 @@ class TestExceptions {
             }
             assertThat(defSum.await()).isEqualTo(1 + 2 + 3 + 4 + 6 + 7 + 8 + 9 + 10)
         }
+
+    @Test
+    fun `we can surround coroutineScope in try catch and child exception won't cancel parent job and its other children`() =
+        runBlocking {
+            try {
+                //coroutineScope means, among other, it won't go past its scope until children are done or throw
+                coroutineScope {
+                    launch { error("qqq") }
+                }
+            } catch (ex: Exception) {
+                println("Exception happened, ignoring it: $ex")
+            }
+
+            delay(1000)
+            println("survived crash of problem in children scope")
+        }
+
+    @Test
+    fun `and if we don't use coroutineScope, try catch won't do anything`() {
+        assertThat {
+            runBlocking {
+                try {
+                    launch { error("qqq") }
+                } catch (ex: Exception) {
+                    println("Exception happened, ignoring it: $ex")
+                }
+                delay(1000)
+                fail("will never get here, child coroutine will be cancelled after exception in another branch")
+
+            }
+        }.isFailure().hasMessage("qqq")
+    }
+
 }
