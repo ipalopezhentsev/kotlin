@@ -1,6 +1,7 @@
 package ru.iliks.coroutines
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
@@ -14,8 +15,9 @@ class TestCoroutines {
         val log = LoggerFactory.getLogger(TestCoroutines::class.java)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun test() = runBlocking {
+    fun test() = runTest {
         launch {
             delay(2000)
             log.info("World")
@@ -34,8 +36,9 @@ class TestCoroutines {
         return "B"
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `test sequential`() = runBlocking {
+    fun `test sequential`() = runTest {
         //note measureTime is not suspend fun
         val time = measureTime {
             val a: String = getA()
@@ -47,8 +50,9 @@ class TestCoroutines {
         log.info("Duration={}", time)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `test parallel`() = runBlocking {
+    fun `test parallel`() = runTest {
         val time = measureTime {
             val a: Deferred<String> = async { getA() }
             val b: Deferred<String> = async { getB() }
@@ -63,7 +67,7 @@ class TestCoroutines {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `test explicit coroutine`() = runBlocking {
+    fun `test explicit coroutine`() = runTest {
         val exSvc = Executors.newSingleThreadScheduledExecutor()
         try {
             val res = suspendCancellableCoroutine { continuation ->

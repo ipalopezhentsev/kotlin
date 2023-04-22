@@ -11,16 +11,21 @@ repositories {
 }
 
 dependencies {
-    val log4j = "2.20.0"
-    val junit = "5.9.2"
+    val log4jVersion = "2.20.0"
+    val junitVersion = "5.9.2"
+    val mockkVersion = "1.13.5"
+    val coroutinesVersion = "1.6.4"
+    val assertkVersion = "0.25"
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
-    implementation("org.apache.logging.log4j:log4j-api:$log4j")
-    implementation("org.apache.logging.log4j:log4j-core:$log4j")
-    implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4j")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:$junit")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junit")
-    testImplementation("com.willowtreeapps.assertk:assertk-jvm:0.25")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion")
+    implementation("org.apache.logging.log4j:log4j-api:$log4jVersion")
+    implementation("org.apache.logging.log4j:log4j-core:$log4jVersion")
+    implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+    testImplementation("com.willowtreeapps.assertk:assertk-jvm:$assertkVersion")
+    testImplementation("io.mockk:mockk:$mockkVersion")
 }
 
 tasks.test {
@@ -28,7 +33,7 @@ tasks.test {
 }
 
 kotlin { // Extension for easy setup
-    jvmToolchain(17) // Target version of generated JVM bytecode. See 7️⃣
+    jvmToolchain(17)
 }
 
 //application {

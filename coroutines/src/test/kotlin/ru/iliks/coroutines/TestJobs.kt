@@ -2,13 +2,18 @@ package ru.iliks.coroutines
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThan
 import kotlinx.coroutines.*
+import kotlinx.coroutines.test.currentTime
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import kotlin.math.sin
+import kotlin.system.measureTimeMillis
 
 class TestJobs {
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `jobs can be cancelled`() = runBlocking {
+    fun `jobs can be cancelled`() = runTest {
         val resByCoroutine = coroutineScope {
             val parentJob = coroutineContext.job
             val childJob42 = async(CoroutineName("childJob42")) {
@@ -50,25 +55,36 @@ class TestJobs {
         assertThat(resByCoroutine).isEqualTo(3)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `job cancel acts only on suspension points`() = runBlocking {
+    fun `job cancel acts only on suspension points`() = runTest {
         //so if we are purely CPU bound, we should check job status from time to time
-        val job = launch {
-            var accum = 0.0
-            //takes about 6s to complete
-            for (i in 0..200_000_000) {
-                accum += sin(i.toDouble())
+        val realTime = measureTimeMillis {
+            val job = launch {
+                var accum = 0.0
+                //takes about 6s to complete
+                for (i in 0..200_000_000) {
+                    accum += sin(i.toDouble())
+                }
+                //will be printed
+                println(accum)
             }
-            //will be printed
-            println(accum)
+            delay(100)
+            //won't cancel until the complete cycle runs
+            job.cancelAndJoin()
         }
-        delay(100)
-        //won't cancel until the complete cycle runs
-        job.cancelAndJoin()
+        //virtual time is 100
+        assertThat(currentTime).isEqualTo(100)
+        //but actual time is much higher
+        //TODO: will start failing in 50 years when CPUs get faster...
+        assertThat(realTime).isGreaterThan(100)
     }
 
     @Test
-    fun `cancel for CPU bound jobs`() = runBlocking {
+    fun `cancel for CPU bound jobs`() =
+        //hmm - it works fast only with runBlocking, changing it to runTest with its modified scheduler disables
+        //yield() it seems and it runs until the end of CPU task
+        runBlocking {
         val job = launch {
             var accum = 0.0
             //takes about 6s to complete
@@ -88,5 +104,6 @@ class TestJobs {
         delay(100)
         //will cancel promptly because we check
         job.cancel()
+        //assertThat(currentTime).isEqualTo(100)
     }
 }

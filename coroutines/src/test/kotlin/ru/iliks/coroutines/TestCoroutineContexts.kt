@@ -1,13 +1,15 @@
 package ru.iliks.coroutines
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.coroutineContext
 
 class TestCoroutineContexts {
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun simpleContext() = runBlocking(EmptyCoroutineContext) {
+    fun simpleContext() = runTest(EmptyCoroutineContext) {
         print("on empty ctx")
         withContext(CoroutineName("ctx1")) {
             print("on named context 1")

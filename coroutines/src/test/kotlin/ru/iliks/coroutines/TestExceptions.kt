@@ -10,13 +10,15 @@ import java.lang.Exception
 import assertk.fail
 import kotlinx.coroutines.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.runTest
 import java.util.concurrent.atomic.AtomicInteger
 
 class TestExceptions {
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `exceptions are very unusual, they cancel everything from bottom to top including all levels siblings`() {
         assertThat {
-            runBlocking {
+            runTest {
                 try {
                     launch {
                         val r1 = async {
@@ -53,8 +55,9 @@ class TestExceptions {
         }.isFailure().hasClass(IllegalStateException::class.java)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `UNSUCCESSFUL solving exceptions killing everything via supervisor scope`() = runBlocking {
+    fun `UNSUCCESSFUL solving exceptions killing everything via supervisor scope`() = runTest {
         //it's only partly successful because it seems that it affects only first subchildren, inner scopes
         //don't inherit its exceptions ignoring behavior, so on low level cancels happen, they just don't bubble
         //up and kill the parent coroutine.
@@ -88,8 +91,9 @@ class TestExceptions {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `full solving exceptions killing everything via supervisor scope`() = runBlocking {
+    fun `full solving exceptions killing everything via supervisor scope`() = runTest {
         val q: Deferred<Int> = async {
             supervisorScope {
                 val r1 = async {
@@ -117,8 +121,9 @@ class TestExceptions {
         assertThat(q.await()).isEqualTo(3)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `how it behaves in simple code`() = runBlocking {
+    fun `how it behaves in simple code`() = runTest {
         val defSum = async {
             val accum = AtomicInteger()
             for (i in 1..10) {
@@ -149,10 +154,11 @@ class TestExceptions {
         return i
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `and how simple optimized code turns into unpredictable raising issues like above`() {
         assertThat {
-            runBlocking {
+            runTest {
                 //let's add nested scopes, so that inner exception passes through them, now we won't have an answer.
                 val defSum = async {
                     val asyncs = mutableListOf<Deferred<Int>>()
@@ -199,9 +205,10 @@ class TestExceptions {
         }.isFailure().hasMessage("qqq")
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `proper fix for async optimization`() {
-        runBlocking {
+        runTest {
             //suppose we still want to call unreliableFunc async and get sum of all good invocations and ignoring bad ones.
             val job = SupervisorJob(coroutineContext.job)
             val nonFailingScope = CoroutineScope(coroutineContext + job)
@@ -234,9 +241,10 @@ class TestExceptions {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `a bit shorter proper fix for async optimization`() {
-        runBlocking {
+        runTest {
             //suppose we still want to call unreliableFunc async and get sum of all good invocations and ignoring bad ones.
             //it's not enough to make this async on nonFailingScope, we need nested ones too or only them.
             val defSum = async {
@@ -268,9 +276,10 @@ class TestExceptions {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `and coroutineScope actually allows to use more familiar try-catch logic - BUT removes parallelism`() =
-        runBlocking {
+        runTest {
             //let's add nested scopes, so that inner exception passes through them, now we won't have an answer.
             val defSum = async {
                 val asyncs = mutableListOf<Deferred<Int>>()
@@ -309,11 +318,14 @@ class TestExceptions {
             assertThat(defSum.await()).isEqualTo(1 + 2 + 3 + 4 + 6 + 7 + 8 + 9 + 10)
         }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `we can surround coroutineScope in try catch and child exception won't cancel parent job and its other children`() =
-        runBlocking {
+        runTest {
             try {
-                //coroutineScope means, among other, it won't go past its scope until children are done or throw
+                //coroutineScope means, among other, it won't go past its scope until children are done or throw.
+                //note unlike pure coroutines we do NOT need supervisorScope/SupervisorJob, our parent coroutine and
+                //its other children won't be cancelled
                 coroutineScope {
                     launch { error("qqq") }
                 }
@@ -325,10 +337,11 @@ class TestExceptions {
             println("survived crash of problem in children scope")
         }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `and if we don't use coroutineScope, try catch won't do anything`() {
         assertThat {
-            runBlocking {
+            runTest {
                 try {
                     launch { error("qqq") }
                 } catch (ex: Exception) {
@@ -336,7 +349,6 @@ class TestExceptions {
                 }
                 delay(1000)
                 fail("will never get here, child coroutine will be cancelled after exception in another branch")
-
             }
         }.isFailure().hasMessage("qqq")
     }
