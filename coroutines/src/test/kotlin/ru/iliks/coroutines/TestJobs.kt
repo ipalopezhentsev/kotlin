@@ -82,19 +82,66 @@ class TestJobs {
 
     @Test
     fun `cancel for CPU bound jobs`() =
-        //hmm - it works fast only with runBlocking, changing it to runTest with its modified scheduler disables
+    //hmm - it works fast only with runBlocking, changing it to runTest with its modified scheduler disables
         //yield() it seems and it runs until the end of CPU task
         runBlocking {
-        val job = launch {
+            val job = launch {
+                var accum = 0.0
+                for (i in 0..200_000_000) {
+                    if (i % 100_000 == 0) {
+                        //may reassign us on a different thread... so books don't recommend it, favoring ensureActive().
+                        //but it doesn't work in my test while yield does!
+                        yield()
+                        //is in all books and articles but doesn't work in practice!
+//                        ensureActive()
+                    }
+                    accum += sin(i.toDouble())
+                }
+                //will be printed
+                println(accum)
+            }
+            delay(100)
+            //will cancel promptly because we check
+            job.cancelAndJoin()
+        }
+
+    @Test
+    fun `cancel for CPU bound jobs - fixed ensureActive`() =
+//it seems runBlocking has some special default dispatch which doesn't cooperate with ensureActive.
+        //when we change to Dispatchers.Default ensureActive() starts tracking parent cancellation.
+        runBlocking(Dispatchers.Default) {
+            val job = launch {
+                var accum = 0.0
+                for (i in 0..200_000_000) {
+                    if (i % 100_000 == 0) {
+                        //may reassign us on a different thread... so books don't recommend it, favoring ensureActive().
+                        //but it doesn't work in my test while yield does!
+//                            yield()
+                        //is in all books and articles but doesn't work in practice!
+                        ensureActive()
+                    }
+                    accum += sin(i.toDouble())
+                }
+                //will be printed
+                println(accum)
+            }
+            delay(100)
+            //will cancel promptly because we check
+            job.cancelAndJoin()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `cancel for CPU bound jobs - another way with explicit scope`() = runTest {
+        //like previous test, but with manual scope we get both working runTest and ensureActive()
+        val scope = CoroutineScope(Job())
+        val job = scope.launch {
             var accum = 0.0
-            //takes about 6s to complete
             for (i in 0..200_000_000) {
                 if (i % 100_000 == 0) {
-                    //may reassign us on a different thread... so books don't recommend it, favoring ensureActive().
-                    //but it doesn't work in my test while yield does!
-                    yield()
-                    //is in all books and articles but doesn't work in practice!
-                    //ensureActive()
+                    //now it works... I don't understand what is significantly different from the previous test.
+                    //note it throws CancellationException, but it's special exception that doesn't cancel parent job.
+                    ensureActive()
                 }
                 accum += sin(i.toDouble())
             }
@@ -103,7 +150,7 @@ class TestJobs {
         }
         delay(100)
         //will cancel promptly because we check
-        job.cancel()
-        //assertThat(currentTime).isEqualTo(100)
+        job.cancelAndJoin()
+        assertThat(currentTime).isEqualTo(100)
     }
 }
